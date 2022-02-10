@@ -1,112 +1,105 @@
-const formEl = document.querySelector("form");
-const tbodyEl = document.querySelector("tbody");
-const tableEl = document.querySelector("table");
+(async function () {
+  const formEl = document.querySelector("form");
+  const tableEl = document.querySelector("table");
+  const tbodyEl = tableEl.querySelector("tbody");
 
-            
-        function onAddProject(e) {
-            e.preventDefault();
-
-            const link = document.getElementById('link').value;
-            chrome.storage.sync.set({'link': link}, function() {
-                console.log('link set ' + link);
-            });
-
-            const date = document.getElementById('date').value;
-            chrome.storage.sync.set({'date': date}, function() {
-                console.log('date set ' + date);
-            });
-
-            const price = document.getElementById('price').value;
-            chrome.storage.sync.set({'price': price}, function() {
-                console.log('price set ' + price);
-            });
-
-            const wl = document.getElementById('wl').value;
-            chrome.storage.sync.set({'wl': wl}, function() {
-                console.log('Whitelisteds set ' + wl);
-            });
-
-            const name = document.getElementById('name').value;
-            chrome.storage.sync.set({'nameChange': name}, function() {
-            		console.log('name is set  ' + name);
-            });
-            
-            tbodyEl.innerHTML += `
-            <tr>
-               <td>${name}</td>
-                <td>${wl}</td>
-                <td>${price}</td>
-                <td>${date}</td>
-                <td>${link}</td>
-                <td><button class="deleteBtn">Delete</button></td>
-            </tr>
-            `
-        }
-      
-    const onDeleteRow = async (e) =>  {
-      const info = await getValue();
-      console.log("ateina i removeCell funkcija" + info);
-      chrome.storage.local.remove(info,function(){
-        console.log("cia po remove funkcijos is storage" + info);
-        var error = chrome.runtime.lastError;
-           if (error) {
-               console.error(error);
-           }
-           console.log("Cia info delete funkcijoj "+ info);
-       })
-       
-
-    	if (!e.target.classList.contains("deleteBtn")) {
-        return;
-    	}
-
-    const btn = e.target;
-    btn.closest("tr").remove();
-
-  }
-  
-    const readLocalStorage = async (key) => {
+  const getWhitelist = async () => {
     return new Promise((resolve, reject) => {
-      chrome.storage.sync.get([key], function (result) {
-        if (result[key] === undefined) {
+      chrome.storage.sync.get({whitelists: JSON.stringify([])}, function (result) {
+        if (result === undefined) {
           reject();
         } else {
-          resolve(result[key]);
-        } 
+          resolve(JSON.parse(result.whitelists))
+        }
       });
     });
   };
 
-  const formTable = async () => {
-  const names = await readLocalStorage('nameChange');
-  const wl = await readLocalStorage('wl');
-  const price = await readLocalStorage('price');
-  const date = await readLocalStorage('date');
-  const link = await readLocalStorage('link');
-      
-    tbodyEl.innerHTML += `
-    <tr>
-       <td>${names}</td>
-        <td>${wl}</td>
-        <td>${price}</td>
-        <td>${date}</td>
-        <td>${link}</td>
-        <td><button class="deleteBtn">Delete</button></td>
-    </tr>
-    `
-    
-  }
-const getValue = async () => {
-  const names = await readLocalStorage('nameChange');
-  const wl = await readLocalStorage('wl');
-  const price = await readLocalStorage('price');
-  const date = await readLocalStorage('date');
-  const link = await readLocalStorage('link');
-  return names;
-}
+  const setWhitelist = async (whitelists) => {
+    chrome.storage.sync.set(
+      { whitelists: JSON.stringify(whitelists) },
+      function (result) {
+        console.log("whitelists is set  " + result);
+      }
+    );
+  };
 
+  const onDeleteRow = async (btn, index) => {
+    // Get all the current WL's.
+    const whitelists = await getWhitelist();
+
+    // remove specific whitelist from the list.
+    whitelists.splice(index, 1);
+
+    await setWhitelist(whitelists);
+
+    // re-create the table.
+    formTable(whitelists);
+  };
+
+  const formTable = async () => {
+    // Get all the current WL's.
+    const whitelists = await getWhitelist();
+
+    // remove table before we recreate it.
+    tbodyEl.innerHTML = '';
+
+    if (whitelists.length === 0) {
+      return;
+    }
+
+    whitelists.forEach((whitelist, index) => {
+      const tr = tbodyEl.insertRow();
+
+      // Add text to the table.
+      Object.keys(whitelist).forEach((key) => {
+        const td = tr.insertCell();
+        const value = document.createTextNode(whitelist[key]);
+        td.appendChild(value);
+      });
+
+      // Add delete button.
+      const td = tr.insertCell();
+      const btn = document.createElement("button");
+      btn.innerHTML = "Delete";
+      btn.className = "deleteBtn";
+      td.appendChild(btn);
+
+      // Add event listener to the button.
+      btn.addEventListener("click", function () {
+        onDeleteRow(this, index);
+      });
+    });
+  };
+
+  const onAddProject = async (e) => {
+    // Get all the current WL's.
+    const whitelists = await getWhitelist();
+    e.preventDefault();
+
+    const link = document.getElementById("link").value;
+    const date = document.getElementById("date").value;
+    const price = document.getElementById("price").value;
+    const wl = document.getElementById("wl").value;
+    const name = document.getElementById("name").value;
+
+    // Add the new wl to the list.
+    whitelists.push({
+      name,
+      wl,
+      price,
+      date,
+      link,
+    });
+
+    // update the whitelists.
+    await setWhitelist(whitelists);
+
+    // re-create the table.
+    formTable(whitelists);
+  };
 
   formTable();
 
   formEl.addEventListener("submit", onAddProject);
-  tableEl.addEventListener("click", onDeleteRow);
+})();
