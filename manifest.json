@@ -1,5 +1,5 @@
 {
-    "manifest_version": 2,
+    "manifest_version": 3,
     "name": "Whitelist Collector",
     "description": "Store all your whitelists in one place. Made specially for RCC community.",
     "version": "1.0",
