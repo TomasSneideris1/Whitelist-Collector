@@ -8,8 +8,8 @@
         "48": "/images/48.png",
         "128": "/images/128.png"
     },
-    "browser_action": {
+    "action": {
         "default_popup": "popup.html"
     },
-    "permissions": ["activeTab", "storage"]
+    "permissions": ["storage"]
 }
